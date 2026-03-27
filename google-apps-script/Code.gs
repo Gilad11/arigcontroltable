@@ -83,18 +83,14 @@ function getHeaders(sheet) {
 function rowToObject(headers, row) {
   const obj = {};
   headers.forEach((h, i) => {
-    if (h === 'passportControl') {
-      obj[h] = row[i] === true || row[i] === 'TRUE' || row[i] === 'true';
-    } else {
-      obj[h] = row[i] !== undefined && row[i] !== null ? String(row[i]) : '';
-    }
+    // Pass passportControl as raw string so frontend can check for "החלקה"
+    obj[h] = row[i] !== undefined && row[i] !== null ? String(row[i]) : '';
   });
   return obj;
 }
 
 function objectToRow(headers, obj) {
   return headers.map(h => {
-    if (h === 'passportControl') return obj[h] ? 'TRUE' : 'FALSE';
     return obj[h] !== undefined && obj[h] !== null ? String(obj[h]) : '';
   });
 }

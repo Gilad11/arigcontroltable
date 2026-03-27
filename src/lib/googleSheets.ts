@@ -38,7 +38,11 @@ export async function fetchPersonnel(): Promise<Personnel[]> {
 
   return (json.data as Personnel[]).map(p => ({
     ...p,
-    passportControl: String(p.passportControl ?? '').trim() === 'החלקה' ? false : true,
+    passportControl: (() => {
+      const raw = String(p.passportControl ?? '').trim();
+      // "החלקה" or legacy boolean false → false (red). Everything else → true (green default)
+      return raw !== 'החלקה' && raw !== 'false' && raw !== 'FALSE';
+    })(),
   }));
 }
 
