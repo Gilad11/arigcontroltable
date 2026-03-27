@@ -38,7 +38,7 @@ export async function fetchPersonnel(): Promise<Personnel[]> {
 
   return (json.data as Personnel[]).map(p => ({
     ...p,
-    passportControl: p.passportControl === true || (p.passportControl as unknown) === 'TRUE' || (p.passportControl as unknown) === 'true',
+    passportControl: String(p.passportControl ?? '').trim() === 'החלקה' ? false : true,
   }));
 }
 

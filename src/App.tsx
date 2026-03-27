@@ -610,13 +610,14 @@ function Dashboard({ data, onViewHotel, syncProps }: {
                 <DashSortTh label="דרגה" field="rankHebrew" />
                 <DashSortTh label="גוף" field="organization" />
                 <DashSortTh label="טלפון" field="phone" />
+                <DashSortTh label="ביקורת דרכונים" field="passportControl" />
                 <DashSortTh label="קבוצה" field="group" />
                 <DashSortTh label="מלון" field="hotel" />
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 text-slate-400">אין רשומות</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-slate-400">אין רשומות</td></tr>
               ) : filtered.map((p, idx) => {
                 const gc = getGroupColor(p.group);
                 return (
@@ -632,6 +633,19 @@ function Dashboard({ data, onViewHotel, syncProps }: {
                           {p.phone}
                         </a>
                       ) : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      {p.passportControl ? (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                          <span className="text-[10px] font-medium text-emerald-700">V</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-[10px] font-bold text-red-700">החלקה</span>
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <span className={`text-xs px-2 py-1 rounded-full border font-medium whitespace-nowrap ${gc.bg} ${gc.text} ${gc.border}`}>
