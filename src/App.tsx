@@ -636,10 +636,7 @@ function Dashboard({ data, onViewHotel, syncProps }: {
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       {p.passportControl ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                          <span className="text-[10px] font-medium text-emerald-700">V</span>
-                        </span>
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
                       ) : (
                         <span className="inline-flex items-center gap-1 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
                           <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
