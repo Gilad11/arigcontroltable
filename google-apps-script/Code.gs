@@ -38,8 +38,32 @@ function getSheet() {
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
     setupSheet_(sheet);
+  } else {
+    // Auto-migrate: if row 2 doesn't have technical keys, insert them
+    migrateIfNeeded_(sheet);
   }
   return sheet;
+}
+
+/** Check if sheet needs migration from 1-header-row to 2-header-row format */
+function migrateIfNeeded_(sheet) {
+  const lastCol = sheet.getLastColumn();
+  if (lastCol === 0) return; // empty sheet
+
+  const row2 = sheet.getRange(2, 1, 1, Math.min(lastCol, COLUMNS.length)).getValues()[0];
+  // If row 2 already has the technical key 'id' in the first cell, no migration needed
+  if (String(row2[0]).trim() === 'id') return;
+
+  // Insert a new row 2 with technical keys, shifting existing data down
+  sheet.insertRowBefore(2);
+  const techHeaders = COLUMNS.map(c => c.key);
+  sheet.getRange(2, 1, 1, techHeaders.length).setValues([techHeaders]);
+  sheet.getRange(2, 1, 1, techHeaders.length)
+    .setFontSize(8)
+    .setFontColor('#94a3b8')
+    .setBackground('#f1f5f9')
+    .setHorizontalAlignment('center');
+  sheet.setFrozenRows(2);
 }
 
 /** Create headers with Hebrew display names and formatting */
