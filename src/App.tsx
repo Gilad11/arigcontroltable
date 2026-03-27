@@ -1154,12 +1154,147 @@ function ManagementView({ data, onChange, syncProps }: {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
+/*  PIN Authentication                                                        */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+type Role = 'master' | 'viewer';
+
+const PIN_MAP: Record<string, Role> = {
+  '2410': 'master',
+  '3674': 'viewer',
+};
+
+function PinScreen({ onAuth }: { onAuth: (role: Role) => void }) {
+  const [digits, setDigits] = useState<string[]>(['', '', '', '']);
+  const [error, setError] = useState('');
+  const [shake, setShake] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    inputRefs.current[0]?.focus();
+  }, []);
+
+  const handleDigit = (index: number, value: string) => {
+    if (!/^\d?$/.test(value)) return;
+    const next = [...digits];
+    next[index] = value;
+    setDigits(next);
+    setError('');
+
+    if (value && index < 3) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all 4 digits entered
+    if (value && index === 3) {
+      const pin = next.join('');
+      const role = PIN_MAP[pin];
+      if (role) {
+        onAuth(role);
+      } else {
+        setError('קוד שגוי');
+        setShake(true);
+        setTimeout(() => {
+          setShake(false);
+          setDigits(['', '', '', '']);
+          inputRefs.current[0]?.focus();
+        }, 600);
+      }
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !digits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+    if (pasted.length === 4) {
+      const next = pasted.split('');
+      setDigits(next);
+      const role = PIN_MAP[pasted];
+      if (role) {
+        onAuth(role);
+      } else {
+        setError('קוד שגוי');
+        setShake(true);
+        setTimeout(() => { setShake(false); setDigits(['', '', '', '']); inputRefs.current[0]?.focus(); }, 600);
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4" dir="rtl">
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-500/30">
+            <UserGroupIcon className="w-9 h-9 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-1">מנהל כוח אדם</h1>
+          <p className="text-sm text-indigo-300/70">Personnel Manager</p>
+        </div>
+
+        {/* PIN Box */}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/10 p-8">
+          <p className="text-center text-sm font-medium text-indigo-200 mb-6">הזן קוד גישה</p>
+          <div className={`flex justify-center gap-3 ${shake ? 'animate-[shake_0.5s_ease-in-out]' : ''}`} dir="ltr" onPaste={handlePaste}>
+            {digits.map((d, i) => (
+              <input
+                key={i}
+                ref={el => { inputRefs.current[i] = el; }}
+                type="password"
+                inputMode="numeric"
+                maxLength={1}
+                value={d}
+                onChange={e => handleDigit(i, e.target.value)}
+                onKeyDown={e => handleKeyDown(i, e)}
+                className="w-14 h-16 text-center text-2xl font-bold rounded-xl bg-white/10 border-2 border-white/20 text-white focus:border-indigo-400 focus:bg-white/15 focus:outline-none transition-all caret-transparent"
+              />
+            ))}
+          </div>
+          {error && (
+            <p className="text-center text-red-400 text-sm font-medium mt-4">{error}</p>
+          )}
+          <div className="mt-8 flex items-center gap-2 justify-center">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="text-[11px] text-indigo-300/50">מערכת מאובטחת</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Shake animation */}
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20%, 60% { transform: translateX(-8px); }
+          40%, 80% { transform: translateX(8px); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
 /*  Main App                                                                  */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 type View = 'dashboard' | 'manage' | 'hotel';
 
 export default function App() {
+  const [role, setRole] = useState<Role | null>(null);
+
+  if (!role) {
+    return <PinScreen onAuth={setRole} />;
+  }
+
+  return <AuthenticatedApp role={role} onLogout={() => setRole(null)} />;
+}
+
+function AuthenticatedApp({ role, onLogout }: { role: Role; onLogout: () => void }) {
   const [view, setView] = useState<View>('dashboard');
   const [data, setData] = useState<Personnel[]>(load);
   const [hotelView, setHotelView] = useState<string>('');
@@ -1171,10 +1306,16 @@ export default function App() {
 
   const sync = useSheetsSync(data, handleChange);
 
-  const nav: { id: View; label: string; icon: ElementType }[] = [
-    { id: 'dashboard', label: 'דשבורד', icon: Squares2X2Icon },
-    { id: 'manage', label: 'ניהול כוח אדם', icon: ClipboardDocumentListIcon },
-  ];
+  const isMaster = role === 'master';
+
+  const nav: { id: View; label: string; icon: ElementType }[] = isMaster
+    ? [
+        { id: 'dashboard', label: 'דשבורד', icon: Squares2X2Icon },
+        { id: 'manage', label: 'ניהול כוח אדם', icon: ClipboardDocumentListIcon },
+      ]
+    : [
+        { id: 'dashboard', label: 'דשבורד', icon: Squares2X2Icon },
+      ];
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -1238,8 +1379,22 @@ export default function App() {
         </nav>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-slate-100">
-          <p className="text-xs text-slate-400">{data.length} רשומות במאגר</p>
+        <div className="px-4 py-4 border-t border-slate-100 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isMaster ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+              {isMaster ? 'מנהל' : 'צופה'}
+            </span>
+            <p className="text-xs text-slate-400">{data.length} רשומות</p>
+          </div>
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+            </svg>
+            התנתק
+          </button>
         </div>
       </aside>
 
@@ -1248,20 +1403,8 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-3 py-4 sm:p-6 lg:p-8">
           {view === 'hotel' && hotelView
             ? <HotelDetailView data={data} initialHotel={hotelView} onBack={() => setView('dashboard')} />
-            : view === 'dashboard'
-              ? <Dashboard
-                  data={data}
-                  onViewHotel={(hotel) => { setHotelView(hotel); setView('hotel'); }}
-                  syncProps={{
-                    syncStatus: sync.syncStatus,
-                    lastSync: sync.lastSync,
-                    syncError: sync.syncError,
-                    onPull: sync.pullFromSheets,
-                    onPush: sync.pushToSheets,
-                    enabled: sync.enabled,
-                  }}
-                />
-              : <ManagementView
+            : (view === 'manage' && isMaster)
+              ? <ManagementView
                   data={data}
                   onChange={handleChange}
                   syncProps={{
@@ -1274,6 +1417,18 @@ export default function App() {
                     sheetAdd: sync.sheetAdd,
                     sheetUpdate: sync.sheetUpdate,
                     sheetDelete: sync.sheetDelete,
+                  }}
+                />
+              : <Dashboard
+                  data={data}
+                  onViewHotel={(hotel) => { setHotelView(hotel); setView('hotel'); }}
+                  syncProps={{
+                    syncStatus: sync.syncStatus,
+                    lastSync: sync.lastSync,
+                    syncError: sync.syncError,
+                    onPull: sync.pullFromSheets,
+                    onPush: sync.pushToSheets,
+                    enabled: sync.enabled,
                   }}
                 />
           }
