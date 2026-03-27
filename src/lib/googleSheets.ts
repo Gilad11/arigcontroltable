@@ -40,8 +40,8 @@ export async function fetchPersonnel(): Promise<Personnel[]> {
     ...p,
     passportControl: (() => {
       const raw = String(p.passportControl ?? '').trim();
-      // "החלקה" or legacy boolean false → false (red). Everything else → true (green default)
-      return raw !== 'החלקה' && raw !== 'false' && raw !== 'FALSE';
+      // Only "החלקה" → false (red). Everything else (empty, "true", "false", etc.) → true (green default)
+      return raw !== 'החלקה';
     })(),
   }));
 }
