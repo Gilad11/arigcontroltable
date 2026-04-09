@@ -34,7 +34,7 @@ import {
 /*  Types                                                                     */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-const GROUPS = ['טכנולוג׳יקל גרופ', 'כיפה', 'מפע״ם', 'נספחות', 'איי סטאר', 'מש״ב'] as const;
+const GROUPS = ['טכנולוג׳יקל גרופ', 'כיפה', 'מפע״ם', 'נספחות', 'איי סטאר', 'מש״ב', 'בטמ״ח'] as const;
 type Group = (typeof GROUPS)[number];
 
 interface Personnel {
@@ -66,6 +66,8 @@ function normalizeGroup(raw: string): string {
     .replace(/\u0027/g, '\u05F3')   // ASCII single-quote → Hebrew geresh ׳
     .replace(/\u201C/g, '\u05F4')   // Left smart-quote → gershayim
     .replace(/\u201D/g, '\u05F4')   // Right smart-quote → gershayim
+    .replace(/\u2018/g, '\u05F3')   // Left smart single-quote → geresh ׳
+    .replace(/\u2019/g, '\u05F3')   // Right smart single-quote → geresh ׳
     .trim();
 }
 
@@ -84,6 +86,7 @@ const GROUP_COLORS: Record<string, { bg: string; text: string; border: string; b
   'נספחות': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', bar: 'bg-rose-500' },
   'איי סטאר': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', bar: 'bg-emerald-500' },
   'מש״ב': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', bar: 'bg-purple-500' },
+  'בטמ״ח': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', bar: 'bg-orange-500' },
 };
 
 /** Safe color lookup — always returns a valid color set */
@@ -99,6 +102,17 @@ const GROUP_POC: Record<string, string> = {
   'איי סטאר': 'עמיחי טרייבר',
   'מש״ב': 'נג׳יב איסמעיל',
   'נספחות': 'שחר פיינמסר',
+  'בטמ״ח': '',
+};
+
+const GROUP_ENGLISH: Record<string, string> = {
+  'מש״ב': 'EW',
+  'טכנולוג׳יקל גרופ': 'Technological Group',
+  'כיפה': 'DOME team',
+  'איי סטאר': 'JOC-ISTAR',
+  'נספחות': 'Attaché team',
+  'מפע״ם': 'JOC-Meny',
+  'בטמ״ח': 'BATMACH',
 };
 
 /* Default hotel security ratings (1-5) */
@@ -291,8 +305,8 @@ function LiveClock() {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
-  const date = now.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const time = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const date = now.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Dubai' });
+  const time = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Dubai' });
   const segments = time.split(':'); // [HH, MM, SS]
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-slate-900 via-slate-800 to-indigo-900 px-4 py-5 sm:p-6 mb-6 shadow-xl">
@@ -354,7 +368,7 @@ function SyncBar({ syncStatus, lastSync, syncError, onPull, onPush, enabled }: {
           {syncStatus === 'success' && 'סנכרון הושלם'}
           {syncStatus === 'error' && (syncError || 'שגיאה')}
           {syncStatus === 'idle' && (lastSync
-            ? `סונכרן: ${lastSync.toLocaleTimeString('he-IL')}`
+            ? `סונכרן: ${lastSync.toLocaleTimeString('he-IL', { timeZone: 'Asia/Dubai' })}`
             : 'Sheets מחובר'
           )}
         </span>
@@ -450,7 +464,7 @@ function Dashboard({ data, onViewHotel, syncProps }: {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('fullNameHebrew');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const total = data.length;
+  const total = data.filter(p => p.fullNameHebrew).length;
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -521,6 +535,38 @@ function Dashboard({ data, onViewHotel, syncProps }: {
           <div className="w-1 h-5 sm:h-6 bg-indigo-500 rounded-full" />
           <h2 className="text-base sm:text-lg font-bold text-slate-900">התפלגות לפי קבוצות</h2>
         </div>
+        <div className="flex items-center gap-2">
+        <button
+          onClick={() => {
+            const groupCounts = GROUPS.map((group, i) => {
+              const count = data.filter(p => matchGroup(p.group) === group && p.hotel).length;
+              const eng = GROUP_ENGLISH[group] || group;
+              return `${i + 1}. ${eng} (${count})`;
+            }).join('\n');
+            const totalDelegations = data.filter(p => p.hotel).length;
+            const now = new Date();
+            const dd = String(now.toLocaleDateString('en-GB', { day: '2-digit', timeZone: 'Asia/Dubai' }));
+            const mm = String(now.toLocaleDateString('en-GB', { month: '2-digit', timeZone: 'Asia/Dubai' }));
+            const hh = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Dubai' });
+            const hotelMap = new Map<string, number>();
+            data.forEach(p => { if (p.hotel) hotelMap.set(p.hotel, (hotelMap.get(p.hotel) || 0) + 1); });
+            const hotelLines = Array.from(hotelMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .map(([name, count]) => `• ${name} (${count})`)
+              .join('\n');
+            const noHotelCount = data.filter(p => p.fullNameHebrew && !p.hotel).length;
+            const noHotelLine = noHotelCount > 0 ? `\n• Without hotel: ${noHotelCount}` : '';
+            const noGroupCount = data.filter(p => p.fullNameHebrew && !GROUPS.includes(matchGroup(p.group) as typeof GROUPS[number])).length;
+            const noGroupLine = noGroupCount > 0 ? `\n• Without group: ${noGroupCount}` : '';
+            const msg = `*TOTAL of delegations: ${totalDelegations}*\n${groupCounts}\n\n*Hotels:*\n${hotelLines}${noHotelLine}${noGroupLine}\n\n\u05EA\u05DE\u05D5\u05E0\u05EA \u05E1\u05D3\u05F4\u05DB \u05E0\u05DB\u05D5\u05DF \u05DC- ${dd}/${mm} \u05D1\u05E9\u05E2\u05D4 ${hh}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-[11px] sm:text-xs font-semibold transition shadow-sm"
+        >
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          <span className="hidden sm:inline">שלח לוואטסאפ</span>
+          <span className="sm:hidden">וואטסאפ</span>
+        </button>
         <button
           onClick={() => exportToExcel(filtered, 'dashboard_export')}
           className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[11px] sm:text-xs font-semibold transition shadow-sm"
@@ -529,10 +575,11 @@ function Dashboard({ data, onViewHotel, syncProps }: {
           <span className="hidden sm:inline">ייצוא לאקסל</span>
           <span className="sm:hidden">אקסל</span>
         </button>
+        </div>
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 mb-8">
         {GROUPS.map(group => {
-          const count = data.filter(p => matchGroup(p.group) === group).length;
+          const count = data.filter(p => matchGroup(p.group) === group && p.hotel).length;
           const colors = getGroupColor(group);
           const poc = GROUP_POC[group];
           return (
