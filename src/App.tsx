@@ -34,7 +34,7 @@ import {
 /*  Types                                                                     */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-const GROUPS = ['טכנולוג׳יקל גרופ', 'כיפה', 'מפע״ם', 'נספחות', 'איי סטאר', 'מש״ב', 'בטמ״ח'] as const;
+const GROUPS = ['טכנולוג׳יקל גרופ', 'כיפה', 'מפע״ם', 'נספחות', 'איי סטאר', 'מש״ב'] as const;
 type Group = (typeof GROUPS)[number];
 
 interface Personnel {
@@ -86,7 +86,6 @@ const GROUP_COLORS: Record<string, { bg: string; text: string; border: string; b
   'נספחות': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', bar: 'bg-rose-500' },
   'איי סטאר': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', bar: 'bg-emerald-500' },
   'מש״ב': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', bar: 'bg-purple-500' },
-  'בטמ״ח': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', bar: 'bg-orange-500' },
 };
 
 /** Safe color lookup — always returns a valid color set */
@@ -102,7 +101,6 @@ const GROUP_POC: Record<string, string> = {
   'איי סטאר': 'עמיחי טרייבר',
   'מש״ב': 'נג׳יב איסמעיל',
   'נספחות': 'שחר פיינמסר',
-  'בטמ״ח': '',
 };
 
 const GROUP_ENGLISH: Record<string, string> = {
@@ -112,7 +110,6 @@ const GROUP_ENGLISH: Record<string, string> = {
   'איי סטאר': 'JOC-ISTAR',
   'נספחות': 'Attaché team',
   'מפע״ם': 'JOC-Meny',
-  'בטמ״ח': 'BATMACH',
 };
 
 /* Default hotel security ratings (1-5) */
