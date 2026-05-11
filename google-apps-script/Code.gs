@@ -41,8 +41,18 @@ function getSheet() {
   } else {
     // Auto-migrate: if row 2 doesn't have technical keys, insert them
     migrateIfNeeded_(sheet);
+    clearDataValidation_(sheet);
   }
   return sheet;
+}
+
+/** Remove any data validation (dropdowns) from data rows so the app can write freely */
+function clearDataValidation_(sheet) {
+  const lastRow = sheet.getMaxRows();
+  const numCols = COLUMNS.length;
+  if (lastRow > 2) {
+    sheet.getRange(3, 1, lastRow - 2, numCols).clearDataValidations();
+  }
 }
 
 /** Check if sheet needs migration from 1-header-row to 2-header-row format */
