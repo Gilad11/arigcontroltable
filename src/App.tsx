@@ -94,13 +94,13 @@ function getGroupColor(group: string) {
   return GROUP_COLORS[matched] || DEFAULT_GROUP_COLOR;
 }
 
-const GROUP_POC: Record<string, string> = {
-  'טכנולוג׳יקל גרופ': 'דני רייזמן',
-  'כיפה': 'פטר סילאגי',
-  'מפע״ם': 'מני עיברי',
-  'איי סטאר': 'עמיחי טרייבר',
-  'מש״ב': 'נג׳יב איסמעיל',
-  'נספחות': 'שחר פיינמסר',
+const GROUP_POC: Record<string, string[]> = {
+  'טכנולוג׳יקל גרופ': ['ליטל ישכאן', 'דור סימון'],
+  'כיפה': ['טום סקוט'],
+  'מפע״ם': ['מני עברי', 'בוריס טישקו'],
+  'איי סטאר': ['עמיחי טרייבר'],
+  'מש״ב': ['נג׳יב איסמעיל'],
+  'נספחות': ['קאי שרעבני'],
 };
 
 const GROUP_ENGLISH: Record<string, string> = {
@@ -585,7 +585,7 @@ function Dashboard({ data, onViewHotel, syncProps }: {
               <p className={`text-2xl sm:text-3xl font-extrabold ${colors.text} leading-none mt-1`}>{count}</p>
               <div className="mt-2 sm:mt-3 pt-2 sm:pt-2.5 border-t border-current/10">
                 <p className="text-[9px] sm:text-[10px] text-slate-500 font-medium mb-0.5 hidden sm:block">איש קשר</p>
-                <p className={`text-[10px] sm:text-xs font-bold ${colors.text} truncate`}>{poc}</p>
+                <p className={`text-[10px] sm:text-xs font-bold ${colors.text} truncate`}>{(poc || []).join(' | ')}</p>
               </div>
               <div className={`absolute -bottom-3 -left-3 w-16 h-16 rounded-full opacity-[0.06] ${colors.bar}`} />
             </div>
