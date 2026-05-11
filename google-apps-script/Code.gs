@@ -110,8 +110,9 @@ function setupSheet_(sheet) {
 }
 
 function getHeaders(sheet) {
-  // Read technical headers from row 2
-  return sheet.getRange(2, 1, 1, sheet.getLastColumn()).getValues()[0];
+  // Always use COLUMNS constant — never depend on what's written in row 2
+  // This prevents bugs when row 2 values are accidentally changed in the sheet
+  return COLUMNS.map(function(c) { return c.key; });
 }
 
 function rowToObject(headers, row) {
