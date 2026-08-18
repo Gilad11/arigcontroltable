@@ -691,7 +691,7 @@ function Dashboard({ data, onViewHotel, isMaster, syncProps }: {
                   <p className={`text-[10px] sm:text-xs font-bold ${colors.text} truncate`}>{poc.length ? poc.join(' | ') : '—'}</p>
                 )}
               </div>
-              <div className={`absolute -bottom-3 -left-3 w-16 h-16 rounded-full opacity-[0.06] ${colors.bar}`} />
+              <div className={`pointer-events-none absolute -bottom-3 -left-3 w-16 h-16 rounded-full opacity-[0.06] ${colors.bar}`} />
             </div>
           );
         })}
