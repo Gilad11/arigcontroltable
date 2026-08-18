@@ -36,7 +36,7 @@ import {
 /*  Types                                                                     */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-const GROUPS = ['טכנולוג׳יקל גרופ', 'כיפה', 'מפע״ם', 'נספחות', 'איי סטאר', 'מש״ב'] as const;
+const GROUPS = ['טכנולוגיות מפא״ת', 'כיפה', 'FCC', 'נספחות', 'איי סטאר', 'מש״ב'] as const;
 type Group = (typeof GROUPS)[number];
 
 interface Personnel {
@@ -73,18 +73,26 @@ function normalizeGroup(raw: string): string {
     .trim();
 }
 
+/** Former group names still present in the sheet → their current name */
+const GROUP_ALIASES: Record<string, string> = {
+  'טכנולוג׳יקל גרופ': 'טכנולוגיות מפא״ת',
+  'טכנולוגיקל גרופ': 'טכנולוגיות מפא״ת',
+  'מפע״ם': 'FCC',
+};
+
 /** Find the matching canonical group name, or return the raw string */
 function matchGroup(raw: string): string {
   const norm = normalizeGroup(raw);
-  return GROUPS.find(g => g === norm) || norm;
+  const aliased = GROUP_ALIASES[norm] || norm;
+  return GROUPS.find(g => g === aliased) || aliased;
 }
 
 const DEFAULT_GROUP_COLOR = { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', bar: 'bg-slate-500' };
 
 const GROUP_COLORS: Record<string, { bg: string; text: string; border: string; bar: string }> = {
-  'טכנולוג׳יקל גרופ': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', bar: 'bg-blue-500' },
+  'טכנולוגיות מפא״ת': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', bar: 'bg-blue-500' },
   'כיפה': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', bar: 'bg-cyan-500' },
-  'מפע״ם': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', bar: 'bg-amber-500' },
+  'FCC': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', bar: 'bg-amber-500' },
   'נספחות': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', bar: 'bg-rose-500' },
   'איי סטאר': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', bar: 'bg-emerald-500' },
   'מש״ב': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', bar: 'bg-purple-500' },
@@ -97,9 +105,9 @@ function getGroupColor(group: string) {
 }
 
 const GROUP_POC: Record<string, string[]> = {
-  'טכנולוג׳יקל גרופ': ['ליטל ישכאן', 'דור סימון'],
+  'טכנולוגיות מפא״ת': ['ליטל ישכאן', 'דור סימון'],
   'כיפה': ['טום סקוט'],
-  'מפע״ם': ['מני עברי', 'בוריס טישקו'],
+  'FCC': ['מני עברי', 'בוריס טישקו'],
   'איי סטאר': ['עמיחי טרייבר'],
   'מש״ב': ['יוסי קציר', 'נג׳יב איסמעיל'],
   'נספחות': ['קאי שרעבני'],
@@ -123,11 +131,11 @@ function persistPocOverrides(overrides: Record<string, string[]>) {
 
 const GROUP_ENGLISH: Record<string, string> = {
   'מש״ב': 'EW',
-  'טכנולוג׳יקל גרופ': 'Technological Group',
+  'טכנולוגיות מפא״ת': 'MAFAT Technologies',
   'כיפה': 'DOME team',
   'איי סטאר': 'JOC-ISTAR',
   'נספחות': 'Attaché team',
-  'מפע״ם': 'JOC-Meny',
+  'FCC': 'FCC',
 };
 
 /* Default hotel security ratings (1-5) */
@@ -148,14 +156,14 @@ const SEED: Personnel[] = [
     fullNameHebrew: 'גלעד נפתלי', fullNameEnglish: 'Gilad Naftali',
     personalId: '7123456', nationalId: '012345678', passportNumber: '21234567',
     birthDate: '1990-05-15', phone: '052-1234567',
-    passportControl: true, group: 'טכנולוג׳יקל גרופ', hotel: 'Shangri-La',
+    passportControl: true, group: 'טכנולוגיות מפא״ת', hotel: 'Shangri-La',
   },
   {
     id: 'seed-2', organization: 'אמ"ן', rankHebrew: 'סגן', rankEnglish: 'Lieutenant',
     fullNameHebrew: 'קאי שרעבני', fullNameEnglish: 'Kai Sharabani',
     personalId: '7234567', nationalId: '023456789', passportNumber: '22345678',
     birthDate: '1992-08-22', phone: '053-2345678',
-    passportControl: false, group: 'מפע״ם', hotel: 'Dusit-Thani',
+    passportControl: false, group: 'FCC', hotel: 'Dusit-Thani',
   },
   {
     id: 'seed-3', organization: 'חיל האוויר', rankHebrew: 'רב סרן', rankEnglish: 'Major',
@@ -176,7 +184,7 @@ const SEED: Personnel[] = [
     fullNameHebrew: 'יובל רונד', fullNameEnglish: 'Yuval Rond',
     personalId: '7567890', nationalId: '056789012', passportNumber: '25678901',
     birthDate: '1998-07-29', phone: '056-5678901',
-    passportControl: true, group: 'טכנולוג׳יקל גרופ', hotel: 'VOGO',
+    passportControl: true, group: 'טכנולוגיות מפא״ת', hotel: 'VOGO',
   },
 ];
 
@@ -299,7 +307,7 @@ function exportToExcel(data: Personnel[], filename: string) {
   const headers = ['#', 'שם מלא', 'דרגה', 'גוף', 'מ.א', 'ת.ז', 'טלפון', 'קבוצה', 'מלון', 'ביקורת דרכונים'];
   const rows = data.map((p, i) => [
     i + 1, p.fullNameHebrew, p.rankHebrew, p.organization,
-    p.personalId, p.nationalId, p.phone, p.group, p.hotel || '', p.passportControl ? 'כן' : 'לא',
+    p.personalId, p.nationalId, p.phone, matchGroup(p.group), p.hotel || '', p.passportControl ? 'כן' : 'לא',
   ]);
   const tableHtml = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>כוח אדם</x:Name><x:WorksheetOptions><x:DisplayRightToLeft/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>${tableHtml}</body></html>`;
@@ -503,8 +511,11 @@ function Dashboard({ data, onViewHotel, isMaster, syncProps }: {
       .then(remote => {
         if (cancelled) return;
         if (Object.keys(remote).length > 0) {
-          setPocOverrides(remote);
-          persistPocOverrides(remote);
+          // Rows saved under a former group name still belong to the renamed group
+          const canonical: Record<string, string[]> = {};
+          Object.keys(remote).forEach(key => { canonical[matchGroup(key)] = remote[key]; });
+          setPocOverrides(canonical);
+          persistPocOverrides(canonical);
           setPocSyncError('');
         } else if (isMaster) {
           // Sheet is still empty — seed it with the current values
@@ -801,7 +812,7 @@ function Dashboard({ data, onViewHotel, isMaster, syncProps }: {
                     </td>
                     <td className="px-3 py-2.5">
                       <span className={`text-xs px-2 py-1 rounded-full border font-medium whitespace-nowrap ${gc.bg} ${gc.text} ${gc.border}`}>
-                        {p.group}
+                        {matchGroup(p.group)}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-sm text-center">{p.hotel || '—'}</td>
@@ -889,7 +900,7 @@ function HotelDetailView({ data, initialHotel, onBack }: {
                     <td className="px-3 py-2.5 text-sm text-center">{p.organization}</td>
                     <td className="px-3 py-2.5">
                       <span className={`text-xs px-2 py-1 rounded-full border font-medium whitespace-nowrap ${gc.bg} ${gc.text} ${gc.border}`}>
-                        {p.group}
+                        {matchGroup(p.group)}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-sm text-center font-mono">{p.phone}</td>
@@ -969,7 +980,7 @@ function PersonnelModal({ mode, initial, onSave, onClose, hotels }: {
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">קבוצה *</label>
-              <select value={form.group} onChange={e => set('group', e.target.value as Group)} className={inputCls}>
+              <select value={matchGroup(form.group)} onChange={e => set('group', e.target.value as Group)} className={inputCls}>
                 {GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
@@ -1259,7 +1270,7 @@ function ManagementView({ data, onChange, syncProps }: {
                     <td className="px-3 py-2.5 text-sm text-center font-mono">{p.phone}</td>
                     <td className="px-3 py-2.5">
                       <span className={`text-xs px-2 py-1 rounded-full border font-medium whitespace-nowrap ${gc.bg} ${gc.text} ${gc.border}`}>
-                        {p.group}
+                        {matchGroup(p.group)}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-sm text-center">{p.hotel || '—'}</td>
