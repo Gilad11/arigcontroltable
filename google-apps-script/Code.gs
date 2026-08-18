@@ -13,6 +13,7 @@
  */
 
 const SHEET_NAME = 'Personnel';
+const CONTACTS_SHEET_NAME = 'GroupContacts';
 
 /* ─── Column definitions (order matters for the sheet layout) ─── */
 const COLUMNS = [
@@ -133,6 +134,9 @@ function objectToRow(headers, obj) {
 /* ─── GET: Read all personnel ─── */
 function doGet(e) {
   try {
+    if (e && e.parameter && e.parameter.resource === 'groupContacts') {
+      return jsonResponse({ success: true, groupContacts: readGroupContacts_() });
+    }
     const sheet = getSheet();
     const headers = getHeaders(sheet);
     const lastRow = sheet.getLastRow();
@@ -183,6 +187,8 @@ function doPost(e) {
         return handleDelete(body.id);
       case 'sync':
         return handleSync(body.records);
+      case 'saveGroupContacts':
+        return handleSaveGroupContacts(body.groupContacts);
       default:
         return jsonResponse({ success: false, error: 'Unknown action: ' + action });
     }
@@ -248,6 +254,68 @@ function handleSync(records) {
   }
 
   return jsonResponse({ success: true, action: 'synced', count: records ? records.length : 0 });
+}
+
+/* ─── Group contact persons (POC) ─── */
+
+/** Get (or create) the GroupContacts sheet: row 1 = headers, then one row per group */
+function getContactsSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CONTACTS_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONTACTS_SHEET_NAME);
+    sheet.getRange(1, 1, 1, 2).setValues([['קבוצה', 'אנשי קשר']]);
+    sheet.getRange(1, 1, 1, 2)
+      .setFontWeight('bold')
+      .setBackground('#4338ca')
+      .setFontColor('#ffffff')
+      .setHorizontalAlignment('center')
+      .setFontSize(10);
+    sheet.setFrozenRows(1);
+    sheet.setRightToLeft(true);
+    sheet.setColumnWidth(1, 160);
+    sheet.setColumnWidth(2, 280);
+  }
+  return sheet;
+}
+
+/** → { 'group name': ['contact a', 'contact b'] } */
+function readGroupContacts_() {
+  const sheet = getContactsSheet_();
+  const lastRow = sheet.getLastRow();
+  const map = {};
+  if (lastRow < 2) return map;
+
+  const rows = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  rows.forEach(function(row) {
+    const group = String(row[0] || '').trim();
+    if (!group) return;
+    map[group] = String(row[1] || '')
+      .split(/[|,]/)
+      .map(function(n) { return n.trim(); })
+      .filter(function(n) { return n.length > 0; });
+  });
+  return map;
+}
+
+function handleSaveGroupContacts(groupContacts) {
+  if (!groupContacts) {
+    return jsonResponse({ success: false, error: 'groupContacts missing' });
+  }
+
+  const sheet = getContactsSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, 2).clear();
+
+  const rows = Object.keys(groupContacts).map(function(group) {
+    const names = groupContacts[group] || [];
+    return [group, names.join(' | ')];
+  });
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, 2).setValues(rows);
+  }
+
+  return jsonResponse({ success: true, action: 'groupContactsSaved', count: rows.length });
 }
 
 /* ─── Helpers ─── */

@@ -28,6 +28,8 @@ import {
   updatePersonnel,
   deletePersonnel,
   syncAllPersonnel,
+  fetchGroupContacts,
+  saveGroupContacts,
 } from './lib/googleSheets';
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -482,8 +484,37 @@ function Dashboard({ data, onViewHotel, isMaster, syncProps }: {
   const [pocOverrides, setPocOverrides] = useState<Record<string, string[]>>(loadPocOverrides);
   const [editingPocGroup, setEditingPocGroup] = useState<string | null>(null);
   const [pocDraft, setPocDraft] = useState('');
+  const [pocSyncError, setPocSyncError] = useState('');
 
   const getPoc = (group: string) => pocOverrides[group] ?? GROUP_POC[group] ?? [];
+
+  /** Full map for every group — what gets written to the sheet */
+  const buildPocMap = (overrides: Record<string, string[]>): Record<string, string[]> => {
+    const map: Record<string, string[]> = { ...overrides };
+    GROUPS.forEach(g => { if (!map[g]) map[g] = GROUP_POC[g] ?? []; });
+    return map;
+  };
+
+  /* Pull contact persons from Google Sheets on mount and after every sync */
+  useEffect(() => {
+    if (!isGoogleSheetsEnabled()) return;
+    let cancelled = false;
+    fetchGroupContacts()
+      .then(remote => {
+        if (cancelled) return;
+        if (Object.keys(remote).length > 0) {
+          setPocOverrides(remote);
+          persistPocOverrides(remote);
+          setPocSyncError('');
+        } else if (isMaster) {
+          // Sheet is still empty — seed it with the current values
+          const seeded = buildPocMap(loadPocOverrides());
+          saveGroupContacts(seeded).catch(() => {});
+        }
+      })
+      .catch(err => { if (!cancelled) setPocSyncError(err?.message || 'שגיאה בטעינת אנשי הקשר'); });
+    return () => { cancelled = true; };
+  }, [syncProps.lastSync, isMaster]);
 
   const startEditPoc = (group: string) => {
     setEditingPocGroup(group);
@@ -496,6 +527,12 @@ function Dashboard({ data, onViewHotel, isMaster, syncProps }: {
     setPocOverrides(next);
     persistPocOverrides(next);
     setEditingPocGroup(null);
+
+    if (isGoogleSheetsEnabled()) {
+      setPocSyncError('');
+      saveGroupContacts(buildPocMap(next))
+        .catch(err => setPocSyncError(err?.message || 'שמירת אנשי הקשר לגיליון נכשלה'));
+    }
   };
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -659,6 +696,13 @@ function Dashboard({ data, onViewHotel, isMaster, syncProps }: {
           );
         })}
       </div>
+
+      {pocSyncError && (
+        <p className="-mt-6 mb-6 text-[11px] text-red-600 flex items-center gap-1">
+          <ExclamationCircleIcon className="w-3.5 h-3.5" />
+          {pocSyncError}
+        </p>
+      )}
 
       {/* Hotel Cards */}
       {hotels.length > 0 && (

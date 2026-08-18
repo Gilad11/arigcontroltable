@@ -89,3 +89,30 @@ export async function syncAllPersonnel(records: Personnel[]): Promise<void> {
     body: JSON.stringify({ action: 'sync', records }),
   });
 }
+
+/* ─── Group contact persons (POC) ─── */
+
+export type GroupContacts = Record<string, string[]>;
+
+/** Fetch the per-group contact persons from the GroupContacts sheet */
+export async function fetchGroupContacts(): Promise<GroupContacts> {
+  if (!SCRIPT_URL) throw new Error('VITE_GOOGLE_SCRIPT_URL not configured');
+
+  const sep = SCRIPT_URL.includes('?') ? '&' : '?';
+  const res = await fetch(`${SCRIPT_URL}${sep}resource=groupContacts`);
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Failed to fetch group contacts');
+
+  return (json.groupContacts || {}) as GroupContacts;
+}
+
+/** Overwrite the GroupContacts sheet with the given map */
+export async function saveGroupContacts(groupContacts: GroupContacts): Promise<void> {
+  if (!SCRIPT_URL) throw new Error('VITE_GOOGLE_SCRIPT_URL not configured');
+
+  await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'saveGroupContacts', groupContacts }),
+  });
+}
