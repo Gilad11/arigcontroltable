@@ -103,6 +103,22 @@ const GROUP_POC: Record<string, string[]> = {
   'נספחות': ['קאי שרעבני'],
 };
 
+const POC_STORAGE_KEY = 'group_poc_overrides';
+
+/** Admin-edited contact persons, keyed by group name (falls back to GROUP_POC) */
+function loadPocOverrides(): Record<string, string[]> {
+  try {
+    const raw = localStorage.getItem(POC_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistPocOverrides(overrides: Record<string, string[]>) {
+  localStorage.setItem(POC_STORAGE_KEY, JSON.stringify(overrides));
+}
+
 const GROUP_ENGLISH: Record<string, string> = {
   'מש״ב': 'EW',
   'טכנולוג׳יקל גרופ': 'Technological Group',
@@ -446,9 +462,10 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function Dashboard({ data, onViewHotel, syncProps }: {
+function Dashboard({ data, onViewHotel, isMaster, syncProps }: {
   data: Personnel[];
   onViewHotel: (hotel: string) => void;
+  isMaster: boolean;
   syncProps: {
     syncStatus: SyncStatus;
     lastSync: Date | null;
@@ -462,7 +479,24 @@ function Dashboard({ data, onViewHotel, syncProps }: {
   const [sortKey, setSortKey] = useState<SortKey>('fullNameHebrew');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const total = data.filter(p => p.fullNameHebrew).length;
+  const [pocOverrides, setPocOverrides] = useState<Record<string, string[]>>(loadPocOverrides);
+  const [editingPocGroup, setEditingPocGroup] = useState<string | null>(null);
+  const [pocDraft, setPocDraft] = useState('');
 
+  const getPoc = (group: string) => pocOverrides[group] ?? GROUP_POC[group] ?? [];
+
+  const startEditPoc = (group: string) => {
+    setEditingPocGroup(group);
+    setPocDraft(getPoc(group).join(' | '));
+  };
+
+  const saveEditPoc = (group: string) => {
+    const names = pocDraft.split(/[|,]/).map(n => n.trim()).filter(Boolean);
+    const next = { ...pocOverrides, [group]: names };
+    setPocOverrides(next);
+    persistPocOverrides(next);
+    setEditingPocGroup(null);
+  };
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortKey(key); setSortDir('asc'); }
@@ -578,14 +612,47 @@ function Dashboard({ data, onViewHotel, syncProps }: {
         {GROUPS.map(group => {
           const count = data.filter(p => matchGroup(p.group) === group && p.hotel).length;
           const colors = getGroupColor(group);
-          const poc = GROUP_POC[group];
+          const poc = getPoc(group);
           return (
             <div key={group} className={`relative overflow-hidden rounded-xl sm:rounded-2xl border p-2.5 sm:p-4 transition-all hover:shadow-md hover:-translate-y-0.5 ${colors.bg} ${colors.border}`}>
               <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wide ${colors.text} leading-tight block`}>{group}</span>
               <p className={`text-2xl sm:text-3xl font-extrabold ${colors.text} leading-none mt-1`}>{count}</p>
               <div className="mt-2 sm:mt-3 pt-2 sm:pt-2.5 border-t border-current/10">
-                <p className="text-[9px] sm:text-[10px] text-slate-500 font-medium mb-0.5 hidden sm:block">איש קשר</p>
-                <p className={`text-[10px] sm:text-xs font-bold ${colors.text} truncate`}>{(poc || []).join(' | ')}</p>
+                <div className="flex items-center justify-between gap-1 mb-0.5 min-h-[14px]">
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 font-medium hidden sm:block">איש קשר</p>
+                  {isMaster && editingPocGroup !== group && (
+                    <button
+                      onClick={() => startEditPoc(group)}
+                      title="ערוך איש קשר"
+                      className="p-0.5 rounded text-slate-400 hover:text-slate-800 hover:bg-white/70 transition"
+                    >
+                      <PencilSquareIcon className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {editingPocGroup === group ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      autoFocus
+                      value={pocDraft}
+                      onChange={e => setPocDraft(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') saveEditPoc(group);
+                        if (e.key === 'Escape') setEditingPocGroup(null);
+                      }}
+                      placeholder="שם | שם"
+                      className="w-full min-w-0 px-1.5 py-1 text-[10px] sm:text-xs rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    />
+                    <button onClick={() => saveEditPoc(group)} title="שמור" className="p-0.5 text-emerald-600 hover:text-emerald-700">
+                      <CheckCircleIcon className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setEditingPocGroup(null)} title="בטל" className="p-0.5 text-slate-400 hover:text-red-600">
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <p className={`text-[10px] sm:text-xs font-bold ${colors.text} truncate`}>{poc.length ? poc.join(' | ') : '—'}</p>
+                )}
               </div>
               <div className={`absolute -bottom-3 -left-3 w-16 h-16 rounded-full opacity-[0.06] ${colors.bar}`} />
             </div>
@@ -1477,6 +1544,7 @@ function AuthenticatedApp({ role, onLogout }: { role: Role; onLogout: () => void
               : <Dashboard
                   data={data}
                   onViewHotel={(hotel) => { setHotelView(hotel); setView('hotel'); }}
+                  isMaster={isMaster}
                   syncProps={{
                     syncStatus: sync.syncStatus,
                     lastSync: sync.lastSync,
